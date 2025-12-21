@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>Collatz 數列</title>
+<style>
+    body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #0f1117;
+        color: #e6e6e6;
+    }
+    h1 {
+        color: #f0f0f0;
+        text-align: center;
+    }
+    .container {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        height: 100vh;
+    }
+    .left {
+        padding: 16px;
+        overflow-y: auto;
+        border-right: 1px solid #222;
+    }
+    .right {
+        padding: 16px;
+    }
+    input, button {
+        background: #1b1f2a;
+        color: #e6e6e6;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    input {
+        width: 120px; margin: 12px;
+    }
+    button {
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #333333;
+    }
+    .asc {
+        color: #ffb86c;
+    }
+    .desc {
+        color: #7fd3ff;
+    }
+    .peak {
+        color: #ff5555;
+    }
+    .valley {
+        color: #80a0ff;
+    }
+    .tags {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+    .seq-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        align-items: center;
+        padding: 6px 8px;
+        font-family: monospace;
+        border-bottom: 1px solid #222;
+    }
+    .seq-item:hover {
+        border: 1px solid #888;
+    }
+    #list .seq-item .tag {
+        text-align: left;
+    }
+    #list .seq-item .value {
+        text-align: right;
+        padding: 0 12px 0 12px;
+    }
+    canvas {
+        background: #0f1117;
+        border: 1px solid #222;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="left">
+        <h1>Collatz 數列</h1>
+        <div>
+            起始值：
+            <input id="start" type="number" value="7" placeholder="輸入正整數"/>
+            <button onclick="run()">計算</button>
+        </div>
+        <div id="list"></div>
+    </div>
+    <div class="right">
+        <canvas id="chart" width="1200" height="800"></canvas>
+    </div>
+</div>
+
+<script>
+function collatz(n) {
+    return n % 2 === 0 ? n / 2 : 3 * n + 1;
+}
+
+function isLocalKernel2(seq, i) {
+    if (seq[i] % 2 === 0)
+        return false;
+    if (i < 2)
+        return true;
+    if (seq[i - 2] > seq[i])
+        return true;
+    return false;
+}
+
+function isPrimitiveKernel2(seq, i) {
+    if (!isLocalKernel2(seq, i))
+        return false;
+    let x = seq[i] + 1;
+    return x % 3 !== 0;
+}
+
+function isValley(seq, i) {
+    return isLocalKernel2(seq, i);
+}
+
+function isPeak(seq, i) {
+    if (seq[i] % 2 !== 0)
+        return false;
+    if (seq[i - 1] > seq[i])
+        return false;
+    if (i + 1 === seq.length)
+    if (seq[i + 1] % 2 === 0)
+        return true
+    // peak / 2 = 3^k * n_odd - 1
+    let next = seq[i] / 2;
+    let x = next + 1;
+    return x % 2 !== 0 && x % 3 === 0;
+}
+
+function isPostPeakKernel3(seq, i) {
+    if (seq[i] % 2 !== 0)
+        return false;
+    if (i === 0) {
+        // kernel3 := 3^k * n_odd - 1
+        let x = seq[i] + 1;
+        return x % 3 === 0
+    }
+    return isPeak(seq, i - 1)
+}
+
+function run() {
+    const start = parseInt(document.getElementById('start').value);
+    if (isNaN(start) || start <= 0) {
+        alert("請輸入正整數");
+        document.getElementById('start').value = ""
+        return;
+    }
+    let seq = [start];
+    while (seq[seq.length - 1] !== 1) {
+        seq.push(collatz(seq[seq.length - 1]));
+    }
+
+    let info = seq.map(() => ({ asc: false, desc: false, LK2: false, PK2: false, PPK3: false, peak: false, valley: false }));
+
+    for (let i = 0; i < seq.length; i++) {
+        if (i > 0) {
+            info[i].asc = info[i - 1].asc;
+            info[i].desc = info[i - 1].desc;
+        }
+        else {
+            info[i].asc = seq[i] % 2 !== 0;
+            info[i].desc = seq[i] % 2 === 0;
+        }
+        info[i].peak = isPeak(seq, i);
+        info[i].valley = isValley(seq, i);
+        info[i].LK2 = isLocalKernel2(seq, i);
+        info[i].PK2 = isPrimitiveKernel2(seq, i);
+        info[i].PPK3 = isPostPeakKernel3(seq, i);
+
+        if (info[i].LK2) {
+            info[i].asc = true
+            info[i].desc = false
+        }
+        if (info[i].PPK3) {
+            info[i].asc = false
+            info[i].desc = true
+        }
+    }
+
+    renderList(seq, info);
+    drawChart(seq, info);
+}
+
+function renderList(seq, info) {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    seq.forEach((v, i) => {
+        let cls = info[i].peak ? 'peak' : info[i].valley ? 'valley' : info[i].asc ? 'asc' : info[i].desc ? 'desc' : '';
+        let tags = [];
+        if (info[i].PK2)
+            tags.push('PK2');
+        else if (info[i].LK2)
+            tags.push('LK2');
+        if (info[i].PPK3) tags.push('PPK3');
+        let seg = [];
+        if (info[i].asc) seg.push('上升區段');
+        if (info[i].desc) seg.push('下降區段');
+        const div = document.createElement('div');
+        div.className = `seq-item ${cls}`;
+        div.innerHTML = `
+            <div class="col value">${i}</div>
+            <div class="col tag">${seg.join(', ')}</div>
+            <div class="col value">${v}</div>
+            <div class="col tag">${tags.join(', ')}</div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function drawChart(seq, info) {
+    const c = document.getElementById('chart');
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    const max = Math.max(...seq);
+    const min = Math.min(...seq);
+    const pad = 40;
+
+    function x(i) {
+        return pad + i * (c.width - 2 * pad) / (seq.length - 1);
+    }
+    function y(v) {
+        return c.height - pad - (v - min) * (c.height - 2 * pad) / (max - min);
+    }
+
+    // line
+    ctx.beginPath();
+    seq.forEach((v, i) => {
+        if (i === 0) ctx.moveTo(x(i), y(v));
+        else ctx.lineTo(x(i), y(v));
+    });
+    ctx.strokeStyle = '#888';
+    ctx.stroke();
+
+    // points
+    seq.forEach((v, i) => {
+        ctx.beginPath();
+        if (info[i].peak) {
+            ctx.fillStyle = '#ff5555';
+            ctx.arc(x(i), y(v), 5, 0, Math.PI * 2);
+        } 
+        else if (info[i].valley) {
+            ctx.fillStyle = '#80a0ff';
+            ctx.arc(x(i), y(v), 5, 0, Math.PI * 2);
+        } 
+        else if (info[i].asc) {
+            ctx.fillStyle = '#ffb86c';
+            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
+        }
+        else if (info[i].desc) {
+            ctx.fillStyle = '#7fd3ff';
+            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
+        }
+        else {
+            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
+        }
+        
+        
+        ctx.fill();
+    });
+}
+
+run();
+</script>
+</body>
+</html>
