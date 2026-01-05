@@ -16,7 +16,7 @@
     }
     .container {
         display: grid;
-        grid-template-columns: 360px 1fr;
+        grid-template-columns: 500px 1fr;
         height: 100vh;
     }
     .left {
@@ -62,7 +62,7 @@
     }
     .seq-item {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
         align-items: center;
         padding: 6px 8px;
         font-family: monospace;
@@ -151,6 +151,28 @@ function isPostPeakKernel3(seq, i) {
     return isPeak(seq, i - 1)
 }
 
+function parseKernel2(value) {
+    // kernel2 := 2^k * n_odd - 1
+    let x = value + 1;
+    let k = 0;
+    while (x % 2 === 0) {
+        k += 1;
+        x /= 2;
+    }
+    return [k, x]
+}
+
+function parseKernel3(value) {
+    // kernel3 := 3^k * n_odd - 1
+    let x = value + 1;
+    let k = 0;
+    while (x % 3 === 0) {
+        k += 1;
+        x /= 3;
+    }
+    return [k, x]
+}
+
 function run() {
     const start = parseInt(document.getElementById('start').value);
     if (isNaN(start) || start <= 0) {
@@ -199,12 +221,28 @@ function renderList(seq, info) {
     list.innerHTML = '';
     seq.forEach((v, i) => {
         let cls = info[i].peak ? 'peak' : info[i].valley ? 'valley' : info[i].asc ? 'asc' : info[i].desc ? 'desc' : '';
+        let format = "";
+        if (info[i].LK2) {
+            let k = 1;
+            let odd = 1;
+            [k, odd] = parseKernel2(v);
+            format = "2^" + k + " * " + odd + " - 1";
+        }
+        else if (info[i].PPK3) {
+            let k = 1;
+            let odd = 1;
+            [k, odd] = parseKernel3(v);
+            format = "3^" + k + " * " + odd + " - 1";
+        }
         let tags = [];
+        if (info[i].LK2)
+            tags.push('LK2');
         if (info[i].PK2)
             tags.push('PK2');
-        else if (info[i].LK2)
-            tags.push('LK2');
-        if (info[i].PPK3) tags.push('PPK3');
+        if (info[i].PPK3)
+            tags.push('PPK3');
+        if (info[i].peak)
+            tags.push('Crest');
         let seg = [];
         if (info[i].asc) seg.push('上升區段');
         if (info[i].desc) seg.push('下降區段');
@@ -215,6 +253,7 @@ function renderList(seq, info) {
             <div class="col tag">${seg.join(', ')}</div>
             <div class="col value">${v}</div>
             <div class="col tag">${tags.join(', ')}</div>
+            <div class="col tag">${format}</div>
         `;
         list.appendChild(div);
     });
