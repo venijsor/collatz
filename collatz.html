@@ -2,48 +2,60 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<title>Collatz 數列</title>
+<title>Collatz 數列核心分析儀</title>
 <style>
     body {
         margin: 0;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: "Cascadia Code", "Consolas", monospace;
         background: #0f1117;
         color: #e6e6e6;
     }
     h1 {
         color: #f0f0f0;
         text-align: center;
+        margin: 10px 0;
     }
     .container {
         display: grid;
-        grid-template-columns: 500px 1fr;
+        grid-template-columns: 550px 1fr;
         height: 100vh;
     }
     .left {
         padding: 16px;
         overflow-y: auto;
         border-right: 1px solid #222;
+        background: #161922;
     }
     .right {
         padding: 16px;
+        display: flex;
+        flex-direction: column;
+    }
+    .controls {
+        background: #1b1f2a;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        position: sticky;
+        top: 0;
     }
     input, button {
-        background: #1b1f2a;
+        background: #252a37;
         color: #e6e6e6;
-        border: 1px solid #333;
+        border: 1px solid #444;
         border-radius: 4px;
         padding: 6px 10px;
-        font-size: 14px;
-    }
-    input {
-        width: 120px; margin: 12px;
     }
     button {
         cursor: pointer;
+        background: #3d5afe;
+        border: none;
+        font-weight: bold;
     }
     button:hover {
-        background-color: #333333;
+        background: #536dfe;
     }
+
     .asc {
         color: #ffb86c;
     }
@@ -52,43 +64,48 @@
     }
     .peak {
         color: #ff5555;
+        font-weight: bold;
     }
     .valley {
         color: #80a0ff;
     }
-    .tags {
-        font-size: 12px;
-        opacity: 0.8;
-    }
+
     .seq-item {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+        grid-template-columns: 45px 120px 90px 100px 1fr;
         align-items: center;
         padding: 6px 8px;
-        font-family: monospace;
         border-bottom: 1px solid #222;
+        font-size: 13px;
     }
     .seq-item:hover {
+        background: #252a37;
         border: 1px solid #888;
     }
-    #list .seq-item .tag {
-        text-align: left;
+    .col {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
-    #list .seq-item .value {
+    .val-text {
         text-align: right;
-        padding: 0 12px 0 12px;
+        padding-right: 12px;
     }
+    
     canvas {
         background: #0f1117;
         border: 1px solid #222;
+        flex-grow: 1;
+        width: 100%;
+        image-rendering: -webkit-optimize-contrast;
     }
 </style>
 </head>
 <body>
 <div class="container">
     <div class="left">
-        <h1>Collatz 數列</h1>
-        <div>
+        <h1>Collatz 數列分析</h1>
+        <div class="controls">
             起始值：
             <input id="start" type="number" value="7" placeholder="輸入正整數"/>
             <button onclick="run()">計算</button>
@@ -122,18 +139,15 @@ function isPrimitiveKernel2(seq, i) {
     return x % 3 !== 0;
 }
 
-function isValley(seq, i) {
-    return isLocalKernel2(seq, i);
-}
-
 function isPeak(seq, i) {
     if (seq[i] % 2 !== 0)
         return false;
     if (seq[i - 1] > seq[i])
         return false;
     if (i + 1 === seq.length)
+        return true;
     if (seq[i + 1] % 2 === 0)
-        return true
+        return true;
     // peak / 2 = 3^k * n_odd - 1
     let next = seq[i] / 2;
     let x = next + 1;
@@ -146,9 +160,9 @@ function isPostPeakKernel3(seq, i) {
     if (i === 0) {
         // kernel3 := 3^k * n_odd - 1
         let x = seq[i] + 1;
-        return x % 3 === 0
+        return x % 3 === 0;
     }
-    return isPeak(seq, i - 1)
+    return isPeak(seq, i - 1);
 }
 
 function parseKernel2(value) {
@@ -156,10 +170,10 @@ function parseKernel2(value) {
     let x = value + 1;
     let k = 0;
     while (x % 2 === 0) {
-        k += 1;
+        k++;
         x /= 2;
     }
-    return [k, x]
+    return [k, x];
 }
 
 function parseKernel3(value) {
@@ -167,51 +181,42 @@ function parseKernel3(value) {
     let x = value + 1;
     let k = 0;
     while (x % 3 === 0) {
-        k += 1;
+        k++;
         x /= 3;
     }
-    return [k, x]
+    return [k, x];
 }
 
 function run() {
-    const start = parseInt(document.getElementById('start').value);
-    if (isNaN(start) || start <= 0) {
+    const startVal = parseInt(document.getElementById('start').value);
+    if (isNaN(startVal) || startVal <= 0) {
         alert("請輸入正整數");
-        document.getElementById('start').value = ""
+        document.getElementById('startVal').value = ""
         return;
     }
-    let seq = [start];
+    let seq = [startVal];
     while (seq[seq.length - 1] !== 1) {
         seq.push(collatz(seq[seq.length - 1]));
     }
-
-    let info = seq.map(() => ({ asc: false, desc: false, LK2: false, PK2: false, PPK3: false, peak: false, valley: false }));
-
-    for (let i = 0; i < seq.length; i++) {
-        if (i > 0) {
-            info[i].asc = info[i - 1].asc;
-            info[i].desc = info[i - 1].desc;
+    let info = seq.map((v, i) => {
+        let lk2 = isLocalKernel2(seq, i);
+        let pk2 = isPrimitiveKernel2(seq, i);
+        let ppk3 = isPostPeakKernel3(seq, i);
+        let peak = isPeak(seq, i);
+        
+        let asc = false, desc = false;
+        if (lk2) {
+            asc = true;
         }
-        else {
-            info[i].asc = seq[i] % 2 !== 0;
-            info[i].desc = seq[i] % 2 === 0;
+        else if (ppk3) {
+            desc = true;
         }
-        info[i].peak = isPeak(seq, i);
-        info[i].valley = isValley(seq, i);
-        info[i].LK2 = isLocalKernel2(seq, i);
-        info[i].PK2 = isPrimitiveKernel2(seq, i);
-        info[i].PPK3 = isPostPeakKernel3(seq, i);
-
-        if (info[i].LK2) {
-            info[i].asc = true
-            info[i].desc = false
+        else if (i > 0) {
+            asc = v > seq[i-1];
+            desc = v < seq[i-1];
         }
-        if (info[i].PPK3) {
-            info[i].asc = false
-            info[i].desc = true
-        }
-    }
-
+        return { v, i, lk2, pk2, ppk3, peak, asc, desc };
+    });
     renderList(seq, info);
     drawChart(seq, info);
 }
@@ -219,41 +224,36 @@ function run() {
 function renderList(seq, info) {
     const list = document.getElementById('list');
     list.innerHTML = '';
-    seq.forEach((v, i) => {
-        let cls = info[i].peak ? 'peak' : info[i].valley ? 'valley' : info[i].asc ? 'asc' : info[i].desc ? 'desc' : '';
+    info.forEach((item) => {
+        let cls = item.peak ? 'peak' : item.lk2 ? 'valley' : item.asc ? 'asc' : item.desc ? 'desc' : '';
         let format = "";
-        if (info[i].LK2) {
-            let k = 1;
-            let odd = 1;
-            [k, odd] = parseKernel2(v);
-            format = "2^" + k + " * " + odd + " - 1";
-        }
-        else if (info[i].PPK3) {
-            let k = 1;
-            let odd = 1;
-            [k, odd] = parseKernel3(v);
-            format = "3^" + k + " * " + odd + " - 1";
-        }
         let tags = [];
-        if (info[i].LK2)
+        if (item.lk2) {
+            let [k, odd] = parseKernel2(item.v);
+            format = `2^${k} * ${odd} - 1`;
             tags.push('LK2');
-        if (info[i].PK2)
-            tags.push('PK2');
-        if (info[i].PPK3)
+            if (item.pk2)
+                tags.push('PK2');
+        } else if (item.ppk3) {
+            let [k, odd] = parseKernel3(item.v);
+            format = `3^${k} * ${odd} - 1`;
             tags.push('PPK3');
-        if (info[i].peak)
+        }
+        if (item.peak)
             tags.push('Crest');
         let seg = [];
-        if (info[i].asc) seg.push('上升區段');
-        if (info[i].desc) seg.push('下降區段');
+        if (item.asc)
+            seg.push('上升區段');
+        if (item.desc)
+            seg.push('下降區段');
         const div = document.createElement('div');
         div.className = `seq-item ${cls}`;
         div.innerHTML = `
-            <div class="col value">${i}</div>
-            <div class="col tag">${seg.join(', ')}</div>
-            <div class="col value">${v}</div>
-            <div class="col tag">${tags.join(', ')}</div>
-            <div class="col tag">${format}</div>
+            <div class="col">${item.i}</div>
+            <div class="col" style="font-size:11px">${seg.join(',')}</div>
+            <div class="col val-text">${item.v}</div>
+            <div class="col" style="font-weight:bold">${tags.join(',')}</div>
+            <div class="col" style="opacity:0.7">${format}</div>
         `;
         list.appendChild(div);
     });
@@ -265,49 +265,40 @@ function drawChart(seq, info) {
     ctx.clearRect(0, 0, c.width, c.height);
 
     const max = Math.max(...seq);
-    const min = Math.min(...seq);
-    const pad = 40;
-
-    function x(i) {
-        return pad + i * (c.width - 2 * pad) / (seq.length - 1);
-    }
-    function y(v) {
-        return c.height - pad - (v - min) * (c.height - 2 * pad) / (max - min);
-    }
-
-    // line
+    const min = 1;
+    const pad = 60;
+    const getX = (i) => pad + i * (c.width - 2 * pad) / (seq.length - 1 || 1);
+    const getY = (v) => c.height - pad - (v - min) * (c.height - 2 * pad) / (max - min || 1);
+    ctx.strokeStyle = '#222';
     ctx.beginPath();
+    for(let i=0; i<=10; i++) {
+        let h = pad + i * (c.height - 2 * pad) / 10;
+        ctx.moveTo(pad, h); ctx.lineTo(c.width - pad, h);
+    }
+    ctx.stroke();
+
+    // lines
+    ctx.beginPath();
+    ctx.lineWidth = 2;
     seq.forEach((v, i) => {
-        if (i === 0) ctx.moveTo(x(i), y(v));
-        else ctx.lineTo(x(i), y(v));
+        i === 0 ? ctx.moveTo(getX(i), getY(v)) : ctx.lineTo(getX(i), getY(v));
     });
-    ctx.strokeStyle = '#888';
+    ctx.strokeStyle = '#555';
     ctx.stroke();
 
     // points
-    seq.forEach((v, i) => {
+    info.forEach((item) => {
         ctx.beginPath();
-        if (info[i].peak) {
+        if (item.peak) {
             ctx.fillStyle = '#ff5555';
-            ctx.arc(x(i), y(v), 5, 0, Math.PI * 2);
-        } 
-        else if (info[i].valley) {
+            ctx.arc(getX(item.i), getY(item.v), 6, 0, Math.PI * 2);
+        } else if (item.lk2) {
             ctx.fillStyle = '#80a0ff';
-            ctx.arc(x(i), y(v), 5, 0, Math.PI * 2);
-        } 
-        else if (info[i].asc) {
-            ctx.fillStyle = '#ffb86c';
-            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
+            ctx.arc(getX(item.i), getY(item.v), 5, 0, Math.PI * 2);
+        } else {
+            ctx.fillStyle = item.asc ? '#ffb86c' : '#7fd3ff';
+            ctx.arc(getX(item.i), getY(item.v), 3, 0, Math.PI * 2);
         }
-        else if (info[i].desc) {
-            ctx.fillStyle = '#7fd3ff';
-            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
-        }
-        else {
-            ctx.arc(x(i), y(v), 3, 1, Math.PI * 2);
-        }
-        
-        
         ctx.fill();
     });
 }
